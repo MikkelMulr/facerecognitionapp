@@ -37,9 +37,28 @@ class App extends Component {
       imageURL: '',
       box: {},
       route: 'signin',
-      isSignedIn: false
+      isSignedIn: false,
+      user: {
+        id: '',
+        name: '',
+        email: '',
+        enteries: 0,
+        joined: ''
+      }
     }
   }
+
+  loadUser = (data) => {
+    this.setState({user: {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      enteries: data.enteries,
+      joined: data.joined
+    }
+  })
+  }
+
 
   calculateFaceLocation = (data) => {
     const clarifaiFace = data.outputs[0].data.regions[0].region_info.bounding_box;
@@ -66,9 +85,25 @@ class App extends Component {
     this.setState({imageURL: this.state.input});
       app.models.predict(Clarifai.FACE_DETECT_MODEL, 
         this.state.input)
-        .then(response => this.displayFaceBox(this.calculateFaceLocation(response)))
+        .then(response => {
+          if(response) {
+            fetch('http://localhost:3000/image', {
+              method: "put",
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({
+                id: this.state.user.id
+              })
+            })
+            .then(response => response.json())
+            .then(count => {
+              this.setState(Object.assign(this.state.user, {enteries: count}))
+            })
+          }
+         
+         this.displayFaceBox(this.calculateFaceLocation(response))
+        })
         .catch(err => console.log(err));
-  }
+      }
 
   onRouteChange = (route) => {
     if (route === 'signout') {
@@ -78,6 +113,8 @@ class App extends Component {
     }
     this.setState({route: route});
   }
+
+
 
   render() {
     const { isSignedIn, imageURL, route, box } = this.state;
@@ -96,7 +133,7 @@ class App extends Component {
             : (
               route === 'signin'
               ? <Signin onRouteChange={this.onRouteChange} />
-              : <Register onRouteChange={this.onRouteChange} />
+              : <Register onRouteChange={this.onRouteChange} loadUser={this.loadUser} />
             )   
         }
       </div>
